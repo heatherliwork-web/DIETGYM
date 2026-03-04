@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Mic, User, X, Check, Flame } from 'lucide-react';
+import { Camera, Mic, User, X, Check, Flame, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI, Type } from '@google/genai';
+import { userApi, foodApi, workoutApi, User as UserType, DailyStats } from './services/api';
 
 const CircularProgress = ({ value, max, color, label, unit, size = 120, strokeWidth = 8 }: any) => {
   const radius = (size - strokeWidth) / 2;
@@ -82,10 +83,11 @@ const BottomSheet = ({ isOpen, onClose, children, title }: any) => {
   );
 };
 
-const CameraView = ({ onLog, onClose }: any) => {
+const CameraView = ({ onLog, onClose, userId }: any) => {
   const [image, setImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +105,7 @@ const CameraView = ({ onLog, onClose }: any) => {
   const analyze = async (base64: string, mimeType: string) => {
     setAnalyzing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [
@@ -136,6 +138,34 @@ const CameraView = ({ onLog, onClose }: any) => {
       alert("Failed to analyze image.");
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!result) return;
+    
+    setSaving(true);
+    try {
+      const response = await foodApi.create(
+        userId,
+        result.foodName,
+        result.calories,
+        result.protein,
+        result.carbs,
+        result.fat
+      );
+      
+      if (response.success && response.data) {
+        onLog(response.data);
+        onClose();
+      } else {
+        alert(response.error || 'Failed to save food log');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save food log');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -192,14 +222,21 @@ const CameraView = ({ onLog, onClose }: any) => {
                 </div>
               </div>
               <button 
-                onClick={() => {
-                  onLog(result);
-                  onClose();
-                }}
-                className="w-full py-4 bg-white text-black rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-zinc-200 transition-colors"
+                onClick={handleConfirm}
+                disabled={saving}
+                className="w-full py-4 bg-white text-black rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-zinc-200 transition-colors disabled:opacity-50"
               >
-                <Check size={16} />
-                CONFIRM LOG
+                {saving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    SAVING...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    CONFIRM LOG
+                  </>
+                )}
               </button>
             </motion.div>
           ) : null}
@@ -209,11 +246,12 @@ const CameraView = ({ onLog, onClose }: any) => {
   );
 };
 
-const VoiceView = ({ onLog, onClose }: any) => {
+const VoiceView = ({ onLog, onClose, userId }: any) => {
   const [text, setText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   const toggleRecording = () => {
     if (isRecording) {
@@ -221,7 +259,6 @@ const VoiceView = ({ onLog, onClose }: any) => {
       if (text) analyze(text);
     } else {
       setIsRecording(true);
-      // Fallback for demo: auto-stop after 3s if no real STT
       setTimeout(() => {
         setIsRecording(false);
         if (!text) setText("Ran 5km in 25 minutes");
@@ -238,7 +275,7 @@ const VoiceView = ({ onLog, onClose }: any) => {
   const analyze = async (workoutText: string) => {
     setAnalyzing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: `Analyze this workout description: "${workoutText}". Estimate the calories burned. Return ONLY a JSON object with keys: 'workoutName' (string), 'caloriesBurned' (number).`,
@@ -260,6 +297,31 @@ const VoiceView = ({ onLog, onClose }: any) => {
       alert("Failed to analyze workout.");
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!result) return;
+    
+    setSaving(true);
+    try {
+      const response = await workoutApi.create(
+        userId,
+        result.workoutName,
+        result.caloriesBurned
+      );
+      
+      if (response.success && response.data) {
+        onLog(response.data);
+        onClose();
+      } else {
+        alert(response.error || 'Failed to save workout log');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save workout log');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -316,14 +378,21 @@ const VoiceView = ({ onLog, onClose }: any) => {
             <span className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5">KCAL BURNED</span>
           </div>
           <button 
-            onClick={() => {
-              onLog(result);
-              onClose();
-            }}
-            className="w-full py-4 bg-white text-black rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-zinc-200 transition-colors"
+            onClick={handleConfirm}
+            disabled={saving}
+            className="w-full py-4 bg-white text-black rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-zinc-200 transition-colors disabled:opacity-50"
           >
-            <Check size={16} />
-            CONFIRM LOG
+            {saving ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                SAVING...
+              </>
+            ) : (
+              <>
+                <Check size={16} />
+                CONFIRM LOG
+              </>
+            )}
           </button>
         </motion.div>
       ) : null}
@@ -331,18 +400,35 @@ const VoiceView = ({ onLog, onClose }: any) => {
   );
 };
 
-const ProfileView = ({ goals, setGoals, onClose }: any) => {
-  const [weight, setWeight] = useState(70);
-  const [height, setHeight] = useState(175);
+const ProfileView = ({ user, onClose, onUpdate }: any) => {
+  const [weight, setWeight] = useState(user?.weight || 70);
+  const [height, setHeight] = useState(user?.height || 175);
+  const [saving, setSaving] = useState(false);
 
-  const recalculateGoals = () => {
-    setGoals({
-      calories: Math.round(weight * 24 * 1.2),
-      protein: Math.round(weight * 2),
-      fat: Math.round(weight * 1),
-      carbs: Math.round((weight * 24 * 1.2 - (weight * 2 * 4) - (weight * 1 * 9)) / 4)
-    });
-    onClose();
+  const handleUpdate = async () => {
+    setSaving(true);
+    try {
+      const response = await userApi.update(user.id, { weight, height });
+      
+      if (response.success) {
+        await onUpdate();
+        onClose();
+      } else {
+        alert(response.error || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const calculatedGoals = {
+    calories: Math.round(weight * 24 * 1.2),
+    protein: Math.round(weight * 2),
+    fat: Math.round(weight * 1),
+    carbs: Math.round((weight * 24 * 1.2 - (weight * 2 * 4) - (weight * 1 * 9)) / 4)
   };
 
   return (
@@ -378,32 +464,33 @@ const ProfileView = ({ goals, setGoals, onClose }: any) => {
       </div>
 
       <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
-        <h4 className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mb-4">Daily Targets</h4>
+        <h4 className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mb-4">Daily Targets (Auto-calculated)</h4>
         <div className="grid grid-cols-2 gap-y-4 gap-x-8">
           <div className="flex justify-between items-end">
             <span className="text-zinc-400 text-xs">Calories</span>
-            <span className="text-white font-mono text-sm">{goals.calories}</span>
+            <span className="text-white font-mono text-sm">{calculatedGoals.calories}</span>
           </div>
           <div className="flex justify-between items-end">
             <span className="text-zinc-400 text-xs">Protein</span>
-            <span className="text-white font-mono text-sm">{goals.protein}g</span>
+            <span className="text-white font-mono text-sm">{calculatedGoals.protein}g</span>
           </div>
           <div className="flex justify-between items-end">
             <span className="text-zinc-400 text-xs">Carbs</span>
-            <span className="text-white font-mono text-sm">{goals.carbs}g</span>
+            <span className="text-white font-mono text-sm">{calculatedGoals.carbs}g</span>
           </div>
           <div className="flex justify-between items-end">
             <span className="text-zinc-400 text-xs">Fat</span>
-            <span className="text-white font-mono text-sm">{goals.fat}g</span>
+            <span className="text-white font-mono text-sm">{calculatedGoals.fat}g</span>
           </div>
         </div>
       </div>
 
       <button 
-        onClick={recalculateGoals}
-        className="w-full py-4 bg-white text-black rounded-xl text-sm font-medium"
+        onClick={handleUpdate}
+        disabled={saving}
+        className="w-full py-4 bg-white text-black rounded-xl text-sm font-medium disabled:opacity-50"
       >
-        UPDATE PROFILE
+        {saving ? 'UPDATING...' : 'UPDATE PROFILE'}
       </button>
     </div>
   );
@@ -413,38 +500,101 @@ export default function App() {
   const [isCameraOpen, setCameraOpen] = useState(false);
   const [isVoiceOpen, setVoiceOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserType | null>(null);
+  const [stats, setStats] = useState<DailyStats | null>(null);
 
-  const [goals, setGoals] = useState({
+  useEffect(() => {
+    initializeUser();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadDailyStats();
+    }
+  }, [user]);
+
+  const initializeUser = async () => {
+    setLoading(true);
+    try {
+      const savedUserId = localStorage.getItem('dietgym_user_id');
+      
+      if (savedUserId) {
+        const response = await userApi.get(parseInt(savedUserId));
+        if (response.success && response.data) {
+          setUser(response.data);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      const username = `user_${Date.now()}`;
+      const response = await userApi.create(username, 'User');
+      
+      if (response.success && response.data) {
+        setUser(response.data);
+        localStorage.setItem('dietgym_user_id', response.data.id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to initialize user:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDailyStats = async () => {
+    if (!user) return;
+    
+    try {
+      const response = await foodApi.getStats(user.id);
+      if (response.success && response.data) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+    }
+  };
+
+  const handleLogFood = (foodData: any) => {
+    loadDailyStats();
+  };
+
+  const handleLogWorkout = (workoutData: any) => {
+    loadDailyStats();
+  };
+
+  const handleProfileUpdate = async () => {
+    await initializeUser();
+    loadDailyStats();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-zinc-800 border-t-white rounded-full animate-spin" />
+          <span className="text-xs text-zinc-500 uppercase tracking-widest">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const goals = stats?.goals || {
     calories: 2200,
     carbs: 250,
     protein: 140,
     fat: 70
-  });
-
-  const [intake, setIntake] = useState({
-    calories: 0,
-    carbs: 0,
-    protein: 0,
-    fat: 0
-  });
-
-  const [burned, setBurned] = useState({
-    calories: 0
-  });
-
-  const handleLogFood = (foodData: any) => {
-    setIntake(prev => ({
-      calories: prev.calories + foodData.calories,
-      carbs: prev.carbs + foodData.carbs,
-      protein: prev.protein + foodData.protein,
-      fat: prev.fat + foodData.fat
-    }));
   };
 
-  const handleLogWorkout = (workoutData: any) => {
-    setBurned(prev => ({
-      calories: prev.calories + workoutData.caloriesBurned
-    }));
+  const intake = {
+    calories: stats?.calories_in || 0,
+    carbs: stats?.carbs_in || 0,
+    protein: stats?.protein_in || 0,
+    fat: stats?.fat_in || 0
+  };
+
+  const burned = {
+    calories: stats?.calories_out || 0
   };
 
   const netCalories = Math.max(0, goals.calories - intake.calories + burned.calories);
@@ -507,31 +657,46 @@ export default function App() {
 
       </main>
 
-      <div className="fixed bottom-10 left-0 right-0 flex justify-center gap-6 pointer-events-none z-30">
-        <button 
-          onClick={() => setCameraOpen(true)} 
-          className="pointer-events-auto w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all"
-        >
-          <Camera size={20} strokeWidth={2} />
-        </button>
-        <button 
-          onClick={() => setVoiceOpen(true)} 
-          className="pointer-events-auto w-14 h-14 rounded-full bg-zinc-900 text-white flex items-center justify-center border border-zinc-800 shadow-xl hover:scale-105 active:scale-95 transition-all"
-        >
-          <Mic size={20} strokeWidth={2} />
-        </button>
-      </div>
+      <nav className="fixed bottom-0 left-0 right-0 bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-800/50 px-6 py-4 pb-8">
+        <div className="flex justify-around items-center max-w-sm mx-auto">
+          <button 
+            onClick={() => setCameraOpen(true)}
+            className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800"
+          >
+            <Camera size={20} strokeWidth={1.5} />
+          </button>
+          
+          <button 
+            onClick={() => setVoiceOpen(true)}
+            className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800"
+          >
+            <Mic size={20} strokeWidth={1.5} />
+          </button>
+        </div>
+      </nav>
 
-      <BottomSheet isOpen={isCameraOpen} onClose={() => setCameraOpen(false)} title="Log Meal">
-        <CameraView onLog={handleLogFood} onClose={() => setCameraOpen(false)} />
+      <BottomSheet isOpen={isCameraOpen} onClose={() => setCameraOpen(false)} title="Log Food">
+        <CameraView 
+          onLog={handleLogFood} 
+          onClose={() => setCameraOpen(false)}
+          userId={user?.id}
+        />
       </BottomSheet>
-      
-      <BottomSheet isOpen={isVoiceOpen} onClose={() => setVoiceOpen(false)} title="Log Activity">
-        <VoiceView onLog={handleLogWorkout} onClose={() => setVoiceOpen(false)} />
+
+      <BottomSheet isOpen={isVoiceOpen} onClose={() => setVoiceOpen(false)} title="Log Workout">
+        <VoiceView 
+          onLog={handleLogWorkout} 
+          onClose={() => setVoiceOpen(false)}
+          userId={user?.id}
+        />
       </BottomSheet>
-      
-      <BottomSheet isOpen={isProfileOpen} onClose={() => setProfileOpen(false)} title="Body Data">
-        <ProfileView goals={goals} setGoals={setGoals} onClose={() => setProfileOpen(false)} />
+
+      <BottomSheet isOpen={isProfileOpen} onClose={() => setProfileOpen(false)} title="Profile">
+        <ProfileView 
+          user={user}
+          onClose={() => setProfileOpen(false)}
+          onUpdate={handleProfileUpdate}
+        />
       </BottomSheet>
     </div>
   );
