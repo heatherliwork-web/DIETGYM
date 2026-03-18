@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Storage</title>
+</head>
+<body>
+    <h1>LocalStorage Test</h1>
+    <pre id="output"></pre>
+    <script>
+        const output = document.getElementById('output');
+        output.textContent = JSON.stringify({
+            dietgym_user: localStorage.getItem('dietgym_user'),
+            dietgym_user_id: localStorage.getItem('dietgym_user_id'),
+            dietgym_food_logs: localStorage.getItem('dietgym_food_logs'),
+            dietgym_workout_logs: localStorage.getItem('dietgym_workout_logs'),
+            dietgym_daily_goals: localStorage.getItem('dietgym_daily_goals')
+        }, null, 2);
+    </script>
+</body>
+</html>

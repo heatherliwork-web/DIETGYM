@@ -517,7 +517,7 @@ export default function App() {
   const initializeUser = async () => {
     setLoading(true);
     try {
-      const savedUserId = localStorage.getItem('dietgym_user_id');
+      const savedUserId = localStorage.getItem('dietgym_current_user_id');
       
       if (savedUserId) {
         const response = await userApi.get(parseInt(savedUserId));
@@ -533,7 +533,7 @@ export default function App() {
       
       if (response.success && response.data) {
         setUser(response.data);
-        localStorage.setItem('dietgym_user_id', response.data.id.toString());
+        localStorage.setItem('dietgym_current_user_id', response.data.id.toString());
       }
     } catch (error) {
       console.error('Failed to initialize user:', error);
