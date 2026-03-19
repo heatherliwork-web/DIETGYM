@@ -1,8 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -15,23 +11,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { contents, config } = req.body;
+    const { contents } = req.body;
 
     if (!contents) {
       return res.status(400).json({ error: 'Missing contents in request body' });
     }
 
-    const requestBody: any = { contents };
-    if (config) {
-      requestBody.generationConfig = config;
-    }
+    const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({ contents }),
     });
 
     if (!response.ok) {
