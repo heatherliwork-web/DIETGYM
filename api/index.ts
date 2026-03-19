@@ -5,11 +5,8 @@ export default async function handler(req: any, res: any) {
 
   res.status(200).json({
     success: true,
-    message: 'DIETGYM API is running',
-    version: '2.0',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      gemini: '/api/gemini'
-    }
+    message: 'DIETGYM API',
+    version: '3.0',
+    timestamp: new Date().toISOString()
   });
 }
