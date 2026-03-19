@@ -10,13 +10,17 @@ export const geminiProxy = {
       body: JSON.stringify({
         contents: [
           {
-            inlineData: {
-              data: imageData.split(',')[1],
-              mimeType
-            }
-          },
-          {
-            text: "Analyze this food image. Estimate the macronutrients and calories. Return ONLY a valid JSON object like this: {\"foodName\": \"name\", \"calories\": 100, \"carbs\": 10, \"protein\": 5, \"fat\": 3}. No markdown, no explanation."
+            parts: [
+              {
+                inlineData: {
+                  data: imageData.split(',')[1],
+                  mimeType
+                }
+              },
+              {
+                text: "Analyze this food image. Estimate the macronutrients and calories. Return ONLY a valid JSON object like this: {\"foodName\": \"name\", \"calories\": 100, \"carbs\": 10, \"protein\": 5, \"fat\": 3}. No markdown, no explanation."
+              }
+            ]
           }
         ]
       }),
@@ -42,7 +46,11 @@ export const geminiProxy = {
       body: JSON.stringify({
         contents: [
           {
-            text: `Analyze this workout description: "${text}". Estimate the calories burned. Return ONLY a valid JSON object like this: {\"workoutName\": \"Running\", \"caloriesBurned\": 300}. No markdown, no explanation.`
+            parts: [
+              {
+                text: `Analyze this workout description: "${text}". Estimate the calories burned. Return ONLY a valid JSON object like this: {\"workoutName\": \"Running\", \"caloriesBurned\": 300}. No markdown, no explanation.`
+              }
+            ]
           }
         ]
       }),
