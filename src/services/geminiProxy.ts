@@ -1,14 +1,5 @@
 const API_BASE = '/api';
 
-interface AnalyzeFoodRequest {
-  imageData: string;
-  mimeType: string;
-}
-
-interface AnalyzeWorkoutRequest {
-  text: string;
-}
-
 export const geminiProxy = {
   analyzeFood: async (imageData: string, mimeType: string): Promise<any> => {
     const response = await fetch(`${API_BASE}/gemini`, {
@@ -25,23 +16,9 @@ export const geminiProxy = {
             }
           },
           {
-            text: "Analyze this food image. Estimate the macronutrients and calories. Return ONLY a JSON object with keys: 'foodName' (string), 'calories' (number), 'carbs' (number in grams), 'protein' (number in grams), 'fat' (number in grams)."
+            text: "Analyze this food image. Estimate the macronutrients and calories. Return ONLY a valid JSON object like this: {\"foodName\": \"name\", \"calories\": 100, \"carbs\": 10, \"protein\": 5, \"fat\": 3}. No markdown, no explanation."
           }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              foodName: { type: "STRING" },
-              calories: { type: "NUMBER" },
-              carbs: { type: "NUMBER" },
-              protein: { type: "NUMBER" },
-              fat: { type: "NUMBER" }
-            },
-            required: ["foodName", "calories", "carbs", "protein", "fat"]
-          }
-        }
+        ]
       }),
     });
 
@@ -51,7 +28,9 @@ export const geminiProxy = {
     }
 
     const data = await response.json();
-    return JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
   },
 
   analyzeWorkout: async (text: string): Promise<any> => {
@@ -63,20 +42,9 @@ export const geminiProxy = {
       body: JSON.stringify({
         contents: [
           {
-            text: `Analyze this workout description: "${text}". Estimate the calories burned. Return ONLY a JSON object with keys: 'workoutName' (string), 'caloriesBurned' (number).`
+            text: `Analyze this workout description: "${text}". Estimate the calories burned. Return ONLY a valid JSON object like this: {\"workoutName\": \"Running\", \"caloriesBurned\": 300}. No markdown, no explanation.`
           }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              workoutName: { type: "STRING" },
-              caloriesBurned: { type: "NUMBER" }
-            },
-            required: ["workoutName", "caloriesBurned"]
-          }
-        }
+        ]
       }),
     });
 
@@ -86,6 +54,8 @@ export const geminiProxy = {
     }
 
     const data = await response.json();
-    return JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const cleanedText = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
   },
 };
