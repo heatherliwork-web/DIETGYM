@@ -15,6 +15,13 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: undefined,
+        },
+      },
+    },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
