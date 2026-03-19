@@ -15,10 +15,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { contents } = req.body;
+    const { contents, config } = req.body;
 
     if (!contents) {
       return res.status(400).json({ error: 'Missing contents in request body' });
+    }
+
+    const requestBody: any = { contents };
+    if (config) {
+      requestBody.generationConfig = config;
     }
 
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -26,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ contents }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

@@ -506,11 +506,12 @@ export default function App() {
     }
   };
 
-  const loadDailyStats = async () => {
-    if (!user) return;
-    
+  const loadDailyStats = async (userId?: number) => {
+    const targetUserId = userId || user?.id;
+    if (!targetUserId) return;
+
     try {
-      const response = await foodApi.getStats(user.id);
+      const response = await foodApi.getStats(targetUserId);
       if (response.success && response.data) {
         setStats(response.data);
       }
@@ -529,7 +530,10 @@ export default function App() {
 
   const handleProfileUpdate = async () => {
     await initializeUser();
-    loadDailyStats();
+    const savedUserId = localStorage.getItem('dietgym_current_user_id');
+    if (savedUserId) {
+      await loadDailyStats(parseInt(savedUserId));
+    }
   };
 
   if (loading) {
