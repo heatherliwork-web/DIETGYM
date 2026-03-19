@@ -365,6 +365,11 @@ const ProfileView = ({ user, onClose, onUpdate }: any) => {
   const [saving, setSaving] = useState(false);
 
   const handleUpdate = async () => {
+    if (!user || !user.id) {
+      alert('User not initialized. Please refresh the page.');
+      return;
+    }
+    
     setSaving(true);
     try {
       const response = await userApi.update(user.id, { weight, height });
