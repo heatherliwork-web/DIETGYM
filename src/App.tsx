@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Mic, User, X, Check, Flame, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI, Type } from '@google/genai';
 import { userApi, foodApi, workoutApi, User as UserType, DailyStats } from './services/api';
+import { geminiProxy } from './services/geminiProxy';
 
 const CircularProgress = ({ value, max, color, label, unit, size = 120, strokeWidth = 8 }: any) => {
   const radius = (size - strokeWidth) / 2;
@@ -105,34 +105,8 @@ const CameraView = ({ onLog, onClose, userId }: any) => {
   const analyze = async (base64: string, mimeType: string) => {
     setAnalyzing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          {
-            inlineData: {
-              data: base64.split(',')[1],
-              mimeType
-            }
-          },
-          "Analyze this food image. Estimate the macronutrients and calories. Return ONLY a JSON object with keys: 'foodName' (string), 'calories' (number), 'carbs' (number in grams), 'protein' (number in grams), 'fat' (number in grams)."
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              foodName: { type: Type.STRING },
-              calories: { type: Type.NUMBER },
-              carbs: { type: Type.NUMBER },
-              protein: { type: Type.NUMBER },
-              fat: { type: Type.NUMBER }
-            },
-            required: ["foodName", "calories", "carbs", "protein", "fat"]
-          }
-        }
-      });
-      setResult(JSON.parse(response.text));
+      const result = await geminiProxy.analyzeFood(base64, mimeType);
+      setResult(result);
     } catch (error) {
       console.error(error);
       alert("Failed to analyze image.");
@@ -275,23 +249,8 @@ const VoiceView = ({ onLog, onClose, userId }: any) => {
   const analyze = async (workoutText: string) => {
     setAnalyzing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Analyze this workout description: "${workoutText}". Estimate the calories burned. Return ONLY a JSON object with keys: 'workoutName' (string), 'caloriesBurned' (number).`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              workoutName: { type: Type.STRING },
-              caloriesBurned: { type: Type.NUMBER }
-            },
-            required: ["workoutName", "caloriesBurned"]
-          }
-        }
-      });
-      setResult(JSON.parse(response.text));
+      const result = await geminiProxy.analyzeWorkout(workoutText);
+      setResult(result);
     } catch (error) {
       console.error(error);
       alert("Failed to analyze workout.");
