@@ -145,20 +145,25 @@ export const userApi = {
   getGoals: async (userId: number, date?: string): Promise<ApiResponse<DailyGoal>> => {
     const targetDate = date || new Date().toISOString().split('T')[0];
     const goals = getStorageItem<DailyGoal[]>(STORAGE_KEYS.DAILY_GOALS, []);
+    const users = getStorageItem<User[]>(STORAGE_KEYS.USER, []);
+    const user = users.find(u => u.id === userId);
+
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const calculateGoalsFromWeight = (weight: number) => {
+      const calories = Math.round(weight * 24 * 1.2);
+      const protein = Math.round(weight * 2);
+      const fat = Math.round(weight * 1);
+      const carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
+      return { calories, protein, fat, carbs };
+    };
+
     let goal = goals.find(g => g.user_id === userId && g.date === targetDate);
 
     if (!goal) {
-      const users = getStorageItem<User[]>(STORAGE_KEYS.USER, []);
-      const user = users.find(u => u.id === userId);
-      
-      if (!user) {
-        return { success: false, error: 'User not found' };
-      }
-
-      const calories = Math.round(user.weight * 24 * 1.2);
-      const protein = Math.round(user.weight * 2);
-      const fat = Math.round(user.weight * 1);
-      const carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
+      const { calories, protein, fat, carbs } = calculateGoalsFromWeight(user.weight);
 
       goal = {
         id: Date.now(),
@@ -172,6 +177,20 @@ export const userApi = {
       };
 
       goals.push(goal);
+      setStorageItem(STORAGE_KEYS.DAILY_GOALS, goals);
+    } else {
+      const { calories, protein, fat, carbs } = calculateGoalsFromWeight(user.weight);
+
+      goal = {
+        ...goal,
+        calories,
+        protein,
+        fat,
+        carbs,
+      };
+
+      const index = goals.findIndex(g => g.user_id === userId && g.date === targetDate);
+      goals[index] = goal;
       setStorageItem(STORAGE_KEYS.DAILY_GOALS, goals);
     }
 
